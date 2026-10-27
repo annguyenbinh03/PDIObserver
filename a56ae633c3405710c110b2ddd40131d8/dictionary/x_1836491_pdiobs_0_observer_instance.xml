@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="enforce_dot_walk_cross_scope_access=true" db_object_id="90609f7fc3445710c110b2ddd40131ec" label="Observer instance" max_length="40" name="x_1836491_pdiobs_0_observer_instance" type="collection">
+        <element label="Dev Portal Password" max_length="255" name="portal_password" type="password2"/>
+        <element label="Dev Portal Email" max_length="50" name="portal_email" type="string"/>
+        <element label="Log1" max_length="4000" name="log1" type="string"/>
+        <element label="Instance URL" max_length="100" name="instance_url" type="url"/>
+        <element label="Log3" max_length="4000" name="log3" type="string"/>
+        <element label="version" max_length="30" name="version" type="string"/>
+        <element label="Instance Password" max_length="255" name="instance_password" type="password2"/>
+        <element label="Instance Username" max_length="100" name="instance_username" type="string"/>
+        <element label="Log2" max_length="4000" name="log2" type="string"/>
+    </element>
+</database>
