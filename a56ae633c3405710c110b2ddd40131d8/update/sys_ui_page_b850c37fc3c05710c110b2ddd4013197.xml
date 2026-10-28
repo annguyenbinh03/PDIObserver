@@ -2,29 +2,56 @@
     <sys_ui_page action="INSERT_OR_UPDATE">
         <category>general</category>
         <client_script><![CDATA[function saveNewPDI() {
-    var url = $j('#pdiUrl').val();
-    var user = $j('#pdiUser').val();
-    var pass = $j('#pdiPass').val();
+    // 1. Get data from the form
+    var url = $j('#pdiUrl').val().trim();
+    var pEmail = $j('#portalEmail').val().trim();
+    var pPass = $j('#portalPass').val();
+    var iUser = $j('#instanceUser').val().trim();
+    var iPass = $j('#instancePass').val();
     
-    if(!url || !user || !pass) {
-        alert("Please provide URL, Username, and Password!");
+    // 2. Perform basic validation
+    if (!url) {
+        alert("Please provide the Instance URL!");
+        $j('#pdiUrl').focus();
         return;
     }
     
-    $j('#addPdiModal').modal('hide');
-    alert("PDI configuration received for: " + url + "\n(GlideAjax logic to insert record will be added here)");
-    $j('#pdiForm')[0].reset();
-}
-
-function pingInstance(pdiName) {
-    alert("Triggering REST Message to ping " + pdiName + "...");
+    // 3. Disable the button to prevent multiple clicks
+    var btn = $j('#btnSavePDI');
+    btn.prop('disabled', true).text('Saving...');
+    
+    // 4. Initialize GlideAjax
+    var ga = new GlideAjax('PDIObserverAjax');
+    ga.addParam('sysparm_name', 'registerNewPDI');
+    
+    // 5. Pass parameters to the server
+    ga.addParam('sysparm_url', url);
+    ga.addParam('sysparm_p_email', pEmail);
+    ga.addParam('sysparm_p_pass', pPass);
+    ga.addParam('sysparm_i_user', iUser);
+    ga.addParam('sysparm_i_pass', iPass);
+    
+    // 6. Handle the server response
+    ga.getXMLAnswer(function(answer) {
+        btn.prop('disabled', false).text('Save Configuration');
+        
+        if (answer && answer.indexOf('SUCCESS') > -1) {
+            $j('#addPdiModal').modal('hide');
+            alert("PDI registered successfully!");
+            $j('#pdiForm')[0].reset();
+            
+            // Reload the page to show the new record in the table
+            window.location.reload(); 
+        } else {
+            alert("An error occurred while saving the PDI: " + answer);
+        }
+    });
 }]]></client_script>
         <description>Main UI Page for PDIObserver to monitor and manage Personal Developer Instances (PDIs).</description>
         <direct>false</direct>
         <endpoint>x_1836491_pdiobs_0_PDIDashboard.do</endpoint>
         <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
-    
     <div class="container-fluid" style="margin-top: 20px;">
         <div class="row">
             <!-- 9-column PDI List -->
@@ -32,14 +59,14 @@ function pingInstance(pdiName) {
                 <div class="panel panel-default">
                     <div class="panel-heading" style="overflow: hidden;">
                         <h3 class="panel-title pull-left" style="margin-top: 5px;">
-                            <span class="glyphicon glyphicon-th-list" style="margin-right: 8px;"></span> 
+                            <span class="glyphicon glyphicon-th-list" style="margin-right: 8px;"></span>
                             Personal Developer Instances Management
                         </h3>
                         <button class="btn btn-primary btn-sm pull-right" data-toggle="modal" data-target="#addPdiModal">
                             <span class="glyphicon glyphicon-plus"></span> Add PDI
                         </button>
                     </div>
-                    
+
                     <div class="panel-body">
                         <table class="table table-striped table-bordered table-hover">
                             <thead>
@@ -69,7 +96,7 @@ function pingInstance(pdiName) {
                     </div>
                 </div>
             </div>
-            
+
             <!-- 3-column Dashboard -->
             <div class="col-md-3">
                 <div class="panel panel-primary">
@@ -93,7 +120,7 @@ function pingInstance(pdiName) {
             </div>
         </div>
     </div>
-    
+
     <!-- Add PDI Modal -->
     <div class="modal fade" id="addPdiModal" tabindex="-1" role="dialog" aria-labelledby="addPdiModalLabel">
         <div class="modal-dialog" role="document">
@@ -107,22 +134,38 @@ function pingInstance(pdiName) {
                 <div class="modal-body">
                     <form id="pdiForm">
                         <div class="form-group">
-                            <label for="pdiUrl">Instance URL</label>
+                            <label for="pdiUrl">Instance URL <span style="color:red;">*</span></label>
                             <input type="text" class="form-control" id="pdiUrl" placeholder="https://devXXXXX.service-now.com" />
                         </div>
+
+                        <hr style="margin-top: 10px; margin-bottom: 10px;" />
+                        <p><strong>Developer Portal Account (For Wake Up)</strong></p>
+
                         <div class="form-group">
-                            <label for="pdiUser">Username (API User)</label>
-                            <input type="text" class="form-control" id="pdiUser" placeholder="admin" />
+                            <label for="portalEmail">Portal Email</label>
+                            <input type="email" class="form-control" id="portalEmail" placeholder="email@example.com" />
                         </div>
                         <div class="form-group">
-                            <label for="pdiPass">Password</label>
-                            <input type="password" class="form-control" id="pdiPass" placeholder="Password" />
+                            <label for="portalPass">Portal Password</label>
+                            <input type="password" class="form-control" id="portalPass" placeholder="Portal Password" />
+                        </div>
+
+                        <hr style="margin-top: 10px; margin-bottom: 10px;" />
+                        <p><strong>Instance API Account (For Ping/Version Check)</strong></p>
+
+                        <div class="form-group">
+                            <label for="instanceUser">Instance Username</label>
+                            <input type="text" class="form-control" id="instanceUser" placeholder="admin" />
+                        </div>
+                        <div class="form-group">
+                            <label for="instancePass">Instance Password</label>
+                            <input type="password" class="form-control" id="instancePass" placeholder="Instance Password" />
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveNewPDI()">Save Configuration</button>
+                    <button type="button" class="btn btn-primary" id="btnSavePDI" onclick="saveNewPDI()">Save Configuration</button>
                 </div>
             </div>
         </div>
@@ -134,13 +177,13 @@ function pingInstance(pdiName) {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-10-27 15:05:04</sys_created_on>
         <sys_id>b850c37fc3c05710c110b2ddd4013197</sys_id>
-        <sys_mod_count>0</sys_mod_count>
+        <sys_mod_count>2</sys_mod_count>
         <sys_name>PDIDashboard</sys_name>
         <sys_package display_value="PDIObserver" source="x_1836491_pdiobs_0">a56ae633c3405710c110b2ddd40131d8</sys_package>
         <sys_policy/>
         <sys_scope display_value="PDIObserver">a56ae633c3405710c110b2ddd40131d8</sys_scope>
         <sys_update_name>sys_ui_page_b850c37fc3c05710c110b2ddd4013197</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-10-27 15:05:04</sys_updated_on>
+        <sys_updated_on>2026-10-28 17:38:48</sys_updated_on>
     </sys_ui_page>
 </record_update>
