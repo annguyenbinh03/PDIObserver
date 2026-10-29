@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sysauto_script">
+    <sysauto_script action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <advanced>true</advanced>
+        <business_calendar/>
+        <condition/>
+        <conditional>false</conditional>
+        <entered_run_end/>
+        <entered_run_start/>
+        <entered_time>1970-01-01 00:00:00</entered_time>
+        <max_drift/>
+        <name>PDIObserver - Auto Ping Instances</name>
+        <offset/>
+        <offset_type>0</offset_type>
+        <repeat_every/>
+        <run_as display_value="System Administrator">6816f79cc0a8016401c5a33be04be441</run_as>
+        <run_as_tz/>
+        <run_dayofmonth>1</run_dayofmonth>
+        <run_dayofweek>1</run_dayofweek>
+        <run_daysofweek/>
+        <run_end/>
+        <run_month>1</run_month>
+        <run_period>1970-01-01 04:00:00</run_period>
+        <run_start/>
+        <run_time>1969-12-31 17:00:00</run_time>
+        <run_type>periodically</run_type>
+        <run_weekinmonth>1</run_weekinmonth>
+        <script><![CDATA[// Query the entire list of PDIs from the PDIObserver application table
+var grPDI = new GlideRecord('x_1836491_pdiobs_0_observer_instance');
+grPDI.query();
+
+while (grPDI.next()) {
+    var targetURL = grPDI.getValue('instance_url');
+    var username = grPDI.getValue('instance_username');
+
+    // Decrypt the 2-way encrypted password into plaintext to pass into the API
+    var password = grPDI.instance_password.getDecryptedValue();
+
+    if (!targetURL || !username || !password) {
+        continue; // Skip if configuration is missing information
+    }
+
+    var endpoint = targetURL + '/api/now/table/sys_properties?sysparm_query=name=glide.war&sysparm_fields=value&sysparm_limit=1';
+
+    try {
+        var request = new sn_ws.RESTMessageV2();
+        request.setEndpoint(endpoint);
+        request.setHttpMethod('GET');
+        request.setRequestHeader('Accept', 'application/json');
+        request.setBasicAuth(username, password);
+
+        // Set timeout (5 seconds) so the Scheduled Job doesn't hang if the PDI is hibernating
+        request.setHttpTimeout(5000);
+
+        var response = request.execute();
+        var statusCode = response.getStatusCode();
+        var responseBody = response.getBody();
+        var currentTime = new GlideDateTime().getDisplayValue();
+
+
+        var currentLog1 = grPDI.getValue('log1') || '';
+        var currentLog2 = grPDI.getValue('log2') || '';
+        grPDI.setValue('log3', currentLog2);
+        grPDI.setValue('log2', currentLog1);
+
+        if (statusCode === 200) {
+            var parsed = JSON.parse(responseBody);
+            if (parsed.result && parsed.result.length > 0) {
+                var buildWar = parsed.result[0].value;
+
+                // Extract and format the version string 
+                var versionMatch = buildWar.match(/glide-([a-z]+)-.*__patch(\d+)-/);
+                var formattedVersion = buildWar; // Default to raw string
+                if (versionMatch && versionMatch.length === 3) {
+                    var releaseName = versionMatch[1].charAt(0).toUpperCase() + versionMatch[1].slice(1);
+                    formattedVersion = releaseName + " Patch " + versionMatch[2];
+                }
+                // Update version and log successful API call
+                grPDI.setValue('version', formattedVersion);
+                var logMsg = '[' + currentTime + '] 200 OK - ALIVE. Version: ' + buildWar;
+                grPDI.setValue('log1', logMsg);
+            }
+        } else {
+            // Log error (wrong password, missing privileges, etc.), shifting previous logs 
+            var errorLogMsg = '[' + currentTime + '] Error ' + statusCode + ': ' + responseBody;
+            grPDI.setValue('log1', errorLogMsg);
+        }
+
+    } catch (ex) {
+        var errorMsg = ex.getMessage ? ex.getMessage() : ex;
+        // Log Timeout or PDI hibernating/unreachable error, shifting previous logs 
+        var excLogMsg = '[' + currentTime + '] EXCEPTION (Hibernating or Unreachable): ' + errorMsg;
+        var excLog1 = grPDI.getValue('log1') || '';
+        var excLog2 = grPDI.getValue('log2') || '';
+
+        grPDI.setValue('log3', excLog2);
+        grPDI.setValue('log2', excLog1);
+        grPDI.setValue('log1', excLogMsg);
+    }
+
+    // Update the last check time and save the record
+    grPDI.setValue('last_check_time', new GlideDateTime());
+    grPDI.update();
+}]]></script>
+        <sys_class_name>sysauto_script</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-10-29 17:04:08</sys_created_on>
+        <sys_id>e28fade0c3d81710c110b2ddd40131ef</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>PDIObserver - Auto Ping Instances</sys_name>
+        <sys_package display_value="PDIObserver" source="x_1836491_pdiobs_0">a56ae633c3405710c110b2ddd40131d8</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="PDIObserver">a56ae633c3405710c110b2ddd40131d8</sys_scope>
+        <sys_update_name>sysauto_script_e28fade0c3d81710c110b2ddd40131ef</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-10-29 17:16:36</sys_updated_on>
+        <time_zone>Asia/Bangkok</time_zone>
+        <upgrade_safe>false</upgrade_safe>
+    </sysauto_script>
+</record_update>
