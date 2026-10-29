@@ -1,7 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_page">
     <sys_ui_page action="INSERT_OR_UPDATE">
         <category>general</category>
-        <client_script><![CDATA[function saveNewPDI() {
+        <client_script><![CDATA[$j(document).ready(function() {
+    loadPDIList();
+});
+
+function loadPDIList() {
+    var ga = new GlideAjax('PDIObserverAjax');
+    ga.addParam('sysparm_name', 'getPDIData');
+    
+    ga.getXMLAnswer(function(answer) {
+        var tbody = $j('#pdiTableBody');
+        tbody.empty(); // Clear the "Loading data..." message
+        
+        if (!answer) {
+            tbody.append('<tr><td colspan="5" style="text-align: center;">No data received from server.</td></tr>');
+            return;
+        }
+        
+        try {
+            var pdiData = JSON.parse(answer);
+            
+            if (pdiData.length === 0) {
+                tbody.append('<tr><td colspan="5" style="text-align: center;">No PDIs registered yet. Click "Add PDI" to start.</td></tr>');
+                return;
+            }
+            
+            var totalCount = pdiData.length;
+            var onlineCount = 0;
+            var offlineCount = 0;
+            
+            // Loop through each PDI and build the table row
+            pdiData.forEach(function(pdi) {
+                var statusBadge = '';
+                
+                if (pdi.status === 'Online') {
+                    statusBadge = '<span class="label label-success">Online</span>';
+                    onlineCount++;
+                } else if (pdi.status === 'Offline') {
+                    statusBadge = '<span class="label label-danger">Offline / Error</span>';
+                    offlineCount++;
+                } else {
+                    statusBadge = '<span class="label label-warning">Pending Check</span>';
+                }
+                
+                var rowHTML = '<tr>' +
+                    '<td><strong>' + pdi.url + '</strong></td>' +
+                    '<td>' + pdi.version + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '<td>' + pdi.last_check + '</td>' +
+                    '<td style="text-align: center;">' +
+                        // Pass the sys_id to the ping function for later use
+                        '<button class="btn btn-default btn-xs" title="Ping Now">' +
+                            '<span class="glyphicon glyphicon-refresh"></span>' +
+                        '</button>' +
+                    '</td>' +
+                '</tr>';
+                
+                tbody.append(rowHTML);
+            });
+            
+            // Update Dashboard statistics
+            $j('#statTotal').text(totalCount);
+            $j('#statOnline').text(onlineCount);
+            $j('#statOffline').text(offlineCount);
+            
+        } catch (ex) {
+            console.error("JSON Parsing Error: ", ex);
+            tbody.append('<tr><td colspan="5" style="text-align: center; color: red;">Error processing PDI data. Check console logs.</td></tr>');
+        }
+    });
+}
+
+function saveNewPDI() {
     // 1. Get data from the form
     var url = $j('#pdiUrl').val().trim();
     var pEmail = $j('#portalEmail').val().trim();
@@ -37,7 +108,6 @@
         
         if (answer && answer.indexOf('SUCCESS') > -1) {
             $j('#addPdiModal').modal('hide');
-            alert("PDI registered successfully!");
             $j('#pdiForm')[0].reset();
             
             // Reload the page to show the new record in the table
@@ -78,17 +148,10 @@
                                     <th style="text-align: center;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <!-- Static mock data -->
+                            <tbody id="pdiTableBody">
                                 <tr>
-                                    <td><strong>https://dev12345.service-now.com</strong></td>
-                                    <td>Washington DC</td>
-                                    <td><span class="label label-success">Online</span></td>
-                                    <td>10 mins ago</td>
-                                    <td style="text-align: center;">
-                                        <button class="btn btn-default btn-xs" title="Ping Now" onclick="pingInstance('dev12345')">
-                                            <span class="glyphicon glyphicon-refresh"></span>
-                                        </button>
+                                    <td colspan="5" style="text-align: center;">
+                                        <span class="glyphicon glyphicon-refresh"></span> Loading PDI data...
                                     </td>
                                 </tr>
                             </tbody>
@@ -177,13 +240,13 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-10-27 15:05:04</sys_created_on>
         <sys_id>b850c37fc3c05710c110b2ddd4013197</sys_id>
-        <sys_mod_count>2</sys_mod_count>
+        <sys_mod_count>5</sys_mod_count>
         <sys_name>PDIDashboard</sys_name>
         <sys_package display_value="PDIObserver" source="x_1836491_pdiobs_0">a56ae633c3405710c110b2ddd40131d8</sys_package>
         <sys_policy/>
         <sys_scope display_value="PDIObserver">a56ae633c3405710c110b2ddd40131d8</sys_scope>
         <sys_update_name>sys_ui_page_b850c37fc3c05710c110b2ddd4013197</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-10-28 17:38:48</sys_updated_on>
+        <sys_updated_on>2026-10-29 16:35:49</sys_updated_on>
     </sys_ui_page>
 </record_update>

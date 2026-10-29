@@ -26,7 +26,6 @@ PDIObserverAjax.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
 
         try {
             // 3. Initialize GlideRecord for the PDI instance table
-            // NOTE: Replace 'x_abc_' with your actual application scope/vendor code
             var grPDI = new GlideRecord('x_1836491_pdiobs_0_observer_instance');
             grPDI.initialize();
 
@@ -35,8 +34,7 @@ PDIObserverAjax.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
             grPDI.portal_email = pEmail;
             grPDI.instance_username = iUser;
 
-            // Assign passwords directly. ServiceNow automatically encrypts 
-            // them into the "Password (2 Way Encrypted)" field type.
+            // Assign passwords directly. ServiceNow automatically encrypts into the "Password (2 Way Encrypted)" field type.
             if (pPass) grPDI.portal_password = pPass;
             if (iPass) grPDI.instance_password = iPass;
 
@@ -59,19 +57,53 @@ PDIObserverAjax.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
             return "ERROR: " + ex.getMessage();
         }
     },
+	getPDIData: function() {
+        var pdiList = [];
+        
+        var grPDI = new GlideRecord('x_1836491_pdiobs_0_observer_instance'); 
+        grPDI.orderByDesc('sys_created_on'); // Sắp xếp bản ghi mới nhất lên đầu
+        grPDI.query();
+        
+        while (grPDI.next()) {
+            var status = 'Unknown';
+            var apiLog = grPDI.getValue('instance_api_log') || '';
+            var sysUpdated = grPDI.getValue('sys_updated_on') || '';
+            
+            // Determine status based on the API log content
+            if (apiLog.indexOf('200') > -1 || apiLog.indexOf('ALIVE') > -1) {
+                status = 'Online';
+            } else if (apiLog.indexOf('401') > -1 || apiLog.indexOf('ERROR') > -1 || apiLog.indexOf('EXCEPTION') > -1) {
+                status = 'Offline';
+            } else if (apiLog === '') {
+                status = 'Pending Check';
+            }
+            
+            // Push object to array
+            pdiList.push({
+                sys_id: grPDI.getUniqueValue(),
+                url: grPDI.getValue('instance_url') || '', 
+                version: grPDI.getValue('version') || 'N/A', 
+                status: status,
+                last_check: sysUpdated
+            });
+        }
+        
+        // Return array as JSON string
+        return JSON.stringify(pdiList);
+    },
     type: 'PDIObserverAjax'
 });]]></script>
         <sys_class_name>sys_script_include</sys_class_name>
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-10-28 17:37:46</sys_created_on>
         <sys_id>c97d2418c3189310c110b2ddd4013131</sys_id>
-        <sys_mod_count>1</sys_mod_count>
+        <sys_mod_count>2</sys_mod_count>
         <sys_name>PDIObserverAjax</sys_name>
         <sys_package display_value="PDIObserver" source="x_1836491_pdiobs_0">a56ae633c3405710c110b2ddd40131d8</sys_package>
         <sys_policy>read</sys_policy>
         <sys_scope display_value="PDIObserver">a56ae633c3405710c110b2ddd40131d8</sys_scope>
         <sys_update_name>sys_script_include_c97d2418c3189310c110b2ddd4013131</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-10-28 17:44:27</sys_updated_on>
+        <sys_updated_on>2026-10-29 16:25:01</sys_updated_on>
     </sys_script_include>
 </record_update>
